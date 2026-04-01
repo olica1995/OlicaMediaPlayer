@@ -1,10 +1,10 @@
 import sys
 import os
 import vlc
-from PyQt6.QtWidgets import (QApplication, QWidget, QHBoxLayout, QVBoxLayout, 
+from PyQt5.QtWidgets import (QApplication, QWidget, QHBoxLayout, QVBoxLayout, 
                              QPushButton, QSlider, QListWidget, QLabel, QFrame, QFileDialog)
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QIcon, QPixmap
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QIcon, QPixmap
 
 class OLICAPlayer(QWidget):
     def __init__(self):
@@ -15,7 +15,6 @@ class OLICAPlayer(QWidget):
         # Helper to find files inside a PyInstaller .exe
         def get_resource_path(relative_path):
             try:
-                # PyInstaller creates a temp folder and stores path in _MEIPASS
                 base_path = sys._MEIPASS
             except Exception:
                 base_path = os.path.abspath(".")
@@ -94,9 +93,9 @@ class OLICAPlayer(QWidget):
         
         if os.path.exists(self.icon_path):
             logo_label = QLabel()
-            logo_pixmap = QPixmap(self.icon_path).scaled(48, 48, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            logo_pixmap = QPixmap(self.icon_path).scaled(48, 48, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             logo_label.setPixmap(logo_pixmap)
-            logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            logo_label.setAlignment(Qt.AlignCenter)
             sidebar_layout.addWidget(logo_label)
 
         lib_label = QLabel("OLICA LIBRARY")
@@ -126,7 +125,7 @@ class OLICAPlayer(QWidget):
         self.btn_play = QPushButton("Play")
         self.btn_play.clicked.connect(self.play_pause)
         
-        self.seeker = QSlider(Qt.Orientation.Horizontal)
+        self.seeker = QSlider(Qt.Horizontal)
         self.seeker.setRange(0, 1000)
         self.seeker.setStyleSheet("""
             QSlider::groove:horizontal { border: 1px solid #3A3A3A; height: 6px; background: #1A1A1A; border-radius: 3px; }
@@ -135,13 +134,13 @@ class OLICAPlayer(QWidget):
         self.seeker.sliderMoved.connect(self.set_position)
         
         controls.addWidget(self.btn_play)
-        controls.addWidget(self.seeker, stretch=1)
+        controls.addWidget(self.seeker, 1)
         
-        right_panel.addWidget(self.video_frame, stretch=1)
+        right_panel.addWidget(self.video_frame, 1)
         right_panel.addLayout(controls)
 
         main_layout.addWidget(sidebar)
-        main_layout.addLayout(right_panel, stretch=1)
+        main_layout.addLayout(right_panel, 1)
 
         self.attach_vlc_events()
 
