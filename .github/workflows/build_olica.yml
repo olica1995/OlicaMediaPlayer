@@ -27,7 +27,6 @@ jobs:
     - name: Create Dummy Icon if Missing
       shell: pwsh
       run: |
-        # If the file doesn't exist, this creates a 1x1 pixel image named olica_logo.png
         if (!(Test-Path "olica_logo.png")) {
           Write-Host "olica_logo.png not found! Creating a fallback dummy image..."
           [IO.File]::WriteAllBytes("olica_logo.png", [Convert]::FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="))
@@ -35,7 +34,7 @@ jobs:
 
     - name: Compile with PyInstaller
       run: |
-        pyinstaller --noconsole --onefile --icon=olica_logo.png olica.py
+        pyinstaller --noconsole --onefile --icon=olica_logo.png --hidden-import=pkgutil olica.py
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
