@@ -10,12 +10,19 @@ class OLICAPlayer(QWidget):
     def __init__(self):
         super().__init__()
         
-        # --- BRANDING ---
         self.setWindowTitle("OLICA MUSIC PLAYER")
         
-        # Load the custom PNG as the window icon
-        self.script_dir = os.path.dirname(os.path.abspath(__file__))
-        self.icon_path = os.path.join(self.script_dir, 'olica_logo.png')
+        # Helper to find files inside a PyInstaller .exe
+        def get_resource_path(relative_path):
+            try:
+                # PyInstaller creates a temp folder and stores path in _MEIPASS
+                base_path = sys._MEIPASS
+            except Exception:
+                base_path = os.path.abspath(".")
+            return os.path.join(base_path, relative_path)
+        
+        # Load the icon from the bundled resources
+        self.icon_path = get_resource_path('olica_logo.png')
         if os.path.exists(self.icon_path):
             self.setWindowIcon(QIcon(self.icon_path))
         
@@ -27,14 +34,12 @@ class OLICAPlayer(QWidget):
         
         self.init_ui()
         
-        # Timer setup for the seek bar
         self.timer = QTimer(self)
         self.timer.setInterval(1000)
         self.timer.timeout.connect(self.update_seeker)
         self.timer.start()
 
     def init_ui(self):
-        # Refined Dark Theme Palette
         self.setStyleSheet("""
             QWidget {
                 background-color: #121212;
@@ -55,7 +60,7 @@ class OLICAPlayer(QWidget):
                 background-color: #2D2D2D;
             }
             QPushButton#AddBtn {
-                background-color: #E67E22; /* OLICA Orange */
+                background-color: #E67E22;
                 color: black;
                 font-weight: bold;
             }
@@ -77,7 +82,6 @@ class OLICAPlayer(QWidget):
             }
         """)
 
-        # Main Layout
         main_layout = QHBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
