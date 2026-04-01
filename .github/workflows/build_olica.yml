@@ -1,1 +1,33 @@
+name: Build OLICA MUSIC PLAYER
 
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build_windows:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install PyQt6 python-vlc pyinstaller
+
+    - name: Compile with PyInstaller
+      run: |
+        pyinstaller --noconsole --onefile --icon=olica_logo.png olica.py
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: OLICA_Windows_Build
+        path: dist/olica.exe
