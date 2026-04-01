@@ -2,15 +2,21 @@ import sys
 import os
 import vlc
 from PyQt5.QtWidgets import (QApplication, QWidget, QHBoxLayout, QVBoxLayout, 
-                             QPushButton, QSlider, QListWidget, QLabel, QFrame, QFileDialog)
+                             QPushButton, QSlider, QListWidget, QLabel, QFrame, 
+                             QFileDialog, QComboBox)
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QIcon, QPixmap
+from mutagen import File as MutagenFile
+from io import BytesIO
 
 class OLICAPlayer(QWidget):
     def __init__(self):
         super().__init__()
         
         self.setWindowTitle("OLICA MUSIC PLAYER")
+        
+        # Enable Drag and Drop for the entire window
+        self.setAcceptDrops(True)
         
         # Helper to find files inside a PyInstaller .exe
         def get_resource_path(relative_path):
@@ -49,13 +55,14 @@ class OLICAPlayer(QWidget):
                 background-color: #181818;
                 border-right: 1px solid #2A2A2A;
             }
-            QPushButton {
+            QPushButton, QComboBox {
                 background-color: #1E1E1E;
                 border: 1px solid #2A2A2A;
                 padding: 8px;
                 border-radius: 4px;
+                color: white;
             }
-            QPushButton:hover {
+            QPushButton:hover, QComboBox:hover {
                 background-color: #2D2D2D;
             }
             QPushButton#AddBtn {
@@ -116,14 +123,37 @@ class OLICAPlayer(QWidget):
         right_panel = QVBoxLayout()
         right_panel.setContentsMargins(0, 0, 0, 0)
         
+        # Video/Album Art Frame
         self.video_frame = QFrame()
         self.video_frame.setStyleSheet("background-color: #000000; border-bottom: 1px solid #2A2A2A;")
         
+        # Center layout for displaying Album Art and Text
+        self.center_layout = QVBoxLayout(self.video_frame)
+        self.center_layout.setAlignment(Qt.AlignCenter)
+        
+        self.art_label = QLabel("Drop files here or use the sidebar to play!")
+        self.art_label.setAlignment(Qt.AlignCenter)
+        self.art_label.setStyleSheet("color: #7A7A7A; font-size: 16px;")
+        
+        self.track_info_label = QLabel("")
+        self.track_info_label.setAlignment(Qt.AlignCenter)
+        self.track_info_label.setStyleSheet("color: #FFFFFF; font-size: 14px; font-weight: bold; margin-top: 10px;")
+        
+        self.center_layout.addWidget(self.art_label)
+        self.center_layout.addWidget(self.track_info_label)
+        
+        # CONTROLS
         controls = QHBoxLayout()
         controls.setContentsMargins(20, 10, 20, 10)
         
         self.btn_play = QPushButton("Play")
         self.btn_play.clicked.connect(self.play_pause)
+        
+        # Speed Control Dropdown
+        self.speed_box = QComboBox()
+        self.speed_box.addItems(["0.5x", "0.75x", "1.0x", "1.25x", "1.5x", "2.0x"])
+        self.speed_box.setCurrentText("1.0x")
+        self.speed_box.currentTextChanged.connect(self.change_speed)
         
         self.seeker = QSlider(Qt.Horizontal)
         self.seeker.setRange(0, 1000)
@@ -134,6 +164,7 @@ class OLICAPlayer(QWidget):
         self.seeker.sliderMoved.connect(self.set_position)
         
         controls.addWidget(self.btn_play)
+        controls.addWidget(self.speed_box)
         controls.addWidget(self.seeker, 1)
         
         right_panel.addWidget(self.video_frame, 1)
@@ -144,17 +175,60 @@ class OLICAPlayer(QWidget):
 
         self.attach_vlc_events()
 
+    # --- DRAG AND DROP HANDLERS ---
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        for url in event.mimeData().urls():
+            file_path = str(url.toLocalFile())
+            if file_path.lower().endswith(('.mp3', '.mp4', '.mkv', '.avi', '.wav')):
+                self.playlist.addItem(file_path)
+
+    # --- CORE LOGIC ---
     def add_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Open Media", "", "Media Files (*.mp3 *.mp4 *.mkv *.avi *.wav)")
-        if file_path:
-            self.playlist.addItem(file_path)
+        file_paths, _ = QFileDialog.getOpenFileNames(self, "Open Media", "", "Media Files (*.mp3 *.mp4 *.mkv *.avi *.wav)")
+        if file_paths:
+            self.playlist.addItems(file_paths)
 
     def play_selected_item(self, item):
         file_path = item.text()
+        
+        # Reset visual frame
+        self.art_label.setText("Playing Video...")
+        self.track_info_label.setText(os.path.basename(file_path))
+        
+        # Try to pull album art if it's an MP3
+        if file_path.lower().endswith('.mp3'):
+            self.load_metadata(file_path)
+
         media = self.instance.media_new(file_path)
         self.player.set_media(media)
         self.player.play()
         self.btn_play.setText("Pause")
+        
+        # Enforce current speed setting
+        self.change_speed(self.speed_box.currentText())
+
+    def load_metadata(self, file_path):
+        try:
+            audio = MutagenFile(file_path)
+            title = audio.get('TIT2', [os.path.basename(file_path)])[0]
+            artist = audio.get('TPE1', ['Unknown Artist'])[0]
+            self.track_info_label.setText(f"{title}\n{artist}")
+
+            # Extract Cover Art
+            if 'APIC:' in audio:
+                art_data = audio['APIC:'].data
+                img = QPixmap()
+                img.loadFromData(art_data)
+                self.art_label.setPixmap(img.scaled(250, 250, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            else:
+                self.art_label.setText("No Album Art Found")
+                self.art_label.setPixmap(QPixmap()) # Clear old pixmap
+        except Exception:
+            self.art_label.setText("Playing Audio...")
 
     def play_pause(self):
         if self.player.is_playing():
@@ -163,6 +237,10 @@ class OLICAPlayer(QWidget):
         else:
             self.player.play()
             self.btn_play.setText("Pause")
+
+    def change_speed(self, speed_text):
+        speed_val = float(speed_text.replace('x', ''))
+        self.player.set_rate(speed_val)
 
     def update_seeker(self):
         if self.player.is_playing():
