@@ -3,6 +3,7 @@ name: Build OLICA MUSIC PLAYER
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch: # Allows you to manually trigger it from your phone!
 
 jobs:
   build_windows:
@@ -20,11 +21,12 @@ jobs:
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install PyQt6 python-vlc pyinstaller
+        pip install -r requirements.txt
+        pip install pyinstaller
 
     - name: Compile with PyInstaller
       run: |
-        pyinstaller --noconsole --onefile --icon=olica_logo.png olica.py
+        pyinstaller --noconsole --onefile --icon=./olica_logo.png olica.py
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
